@@ -4,7 +4,7 @@ systemctl --user stop container-apt-cacher-ng.service || true
 
 podman build -t apt-cacher-ng -f - <<EOF
 
-FROM    debian:stable
+FROM    debian:testing
 
 RUN     apt update && \
         echo 'apt-cacher-ng apt-cacher-ng/bindaddress select localhost' | debconf-set-selections && \
