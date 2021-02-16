@@ -1,0 +1,75 @@
+#!/bin/sh -eux
+
+LOCALES="en_US en_CA en_DK de_DE en_IE"
+RELEASE=${1:-sid}
+DISTRO=${2:-debian}
+
+toolbox rm -f $RELEASE || true
+toolbox -y create -c $RELEASE --image docker.io/$DISTRO:$RELEASE
+
+podman start $RELEASE
+run() { podman exec -i $RELEASE "$@"; }
+
+run umount /var/log/journal
+
+cat <<EOF | run debconf-set-selections
+man-db man-db/auto-update boolean false
+EOF
+
+cat<<EOF | run tee /etc/apt/sources.list
+deb http://deb.debian.org/debian ${RELEASE} main contrib non-free
+deb-src http://deb.debian.org/debian ${RELEASE} main contrib non-free
+deb http://deb.debian.org/debian-debug ${RELEASE}-debug main contrib non-free
+EOF
+
+echo 'Acquire::http::Proxy "http://127.0.0.1:3142";' | run tee /etc/apt/apt.conf.d/01proxy
+echo force-unsafe-io | run tee -a /etc/dpkg/dpkg.cfg.d/unsafe-io
+echo ${RELEASE} | run tee /etc/hostname
+run hostname ${RELEASE}
+run ln -Tsf host/run/pcscd /run/pcscd
+run ln -Tsf host/run/sshd /run/sshd
+
+run apt-get update
+run apt install -y eatmydata dialog locales
+run sed -i "s/nullok_secure/nullok/" /etc/pam.d/common-auth
+(for locale in ${LOCALES}; do echo "$locale.UTF-8 UTF-8"; done) | run tee /etc/locale.gen
+run locale-gen
+
+apt() { podman exec -it $RELEASE eatmydata apt "$@"; }
+
+apt dist-upgrade -y
+
+# basic stuff
+apt install -y strace less vim manpages-dev git bash-completion wget gnupg curl procps valgrind gdb libvte-2.91-common libnss-myhostname apt-file neofetch sudo socat
+
+# kvm
+apt install -y python3-libvirt libvirt-clients
+
+# cockpit
+apt build-dep -y cockpit
+apt install -y --no-install-recommends npm chromium pyflakes3 python3-argcomplete expect python3-pycodestyle sassc appstream-util
+
+# debug symbols for everything
+AVAILABLE="$(mktemp)"
+DEBUGS="$(mktemp)"
+DEVSRC="$(mktemp)"
+DOCS="$(mktemp)"
+
+trap 'rm -fv "${AVAILABLE}" "${DEBUGS}" "${DEVSRC}" "${DOCS}"' EXIT
+run apt-cache pkgnames | sort >"${AVAILABLE}"
+run dpkg-query --show --showformat='${Package}-dbgsym\n' | sort >"${DEBUGS}"
+apt install $(comm -12 "${AVAILABLE}" "${DEBUGS}")
+
+# initialise apt-file
+run apt-file update
+
+# for every -dev on the system, install any doc package that shares its source package
+run dpkg-query -W -f '${Source}\n' '*-dev' | cut -f 1 -d ' ' | sort | uniq >"${DEVSRC}"
+run apt-cache showsrc $(cat "${DEVSRC}") | sed -n 's/^ \([^ ]*\) deb doc.*$/\1/p' >"${DOCS}"
+apt install -y --no-install-recommends $(comm -12 "${DOCS}" "${AVAILABLE}")
+
+# link gtk-doc from the container to the Devhelp flatpak
+gtkdocdir="$(podman container inspect --format '{{.GraphDriver.Data.UpperDir}}/usr/share/gtk-doc' "${RELEASE}")"
+if test -d "${gtkdocdir}" -a -d ~/.var/app/org.gnome.Devhelp/data; then
+  ln -Tsf "${gtkdocdir}" ~/.var/app/org.gnome.Devhelp/data/gtk-doc
+fi
