@@ -1,0 +1,41 @@
+build_deps='
+  cockpit
+'
+
+packages='
+  bash-completion
+  chromium
+  curl
+  expect
+  gdb
+  git
+  gnupg
+  less
+  neofetch
+  npm
+  procps
+  python3-argcomplete
+  python3-libvirt
+  python3-pycodestyle
+  python3-pyflakes
+  sassc
+  socat
+  strace
+  sudo
+  valgrind
+  vim
+  wget
+'
+
+debian_packages='
+  appstream-util
+  libnss-myhostname
+  libvte-2.91-common
+  manpages-dev
+  pyflakes3
+  libvirt-clients
+'
+
+fedora_packages='
+  libvirt-client
+'

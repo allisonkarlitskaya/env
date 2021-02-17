@@ -30,24 +30,19 @@ run ln -Tsf host/run/pcscd /run/pcscd
 run ln -Tsf host/run/sshd /run/sshd
 
 run apt-get update
-run apt install -y eatmydata dialog locales
+run apt install -y eatmydata dialog locales apt-file
 run sed -i "s/nullok_secure/nullok/" /etc/pam.d/common-auth
 (for locale in ${LOCALES}; do echo "$locale.UTF-8 UTF-8"; done) | run tee /etc/locale.gen
 run locale-gen
+run apt-file update
 
 apt() { podman exec -it $RELEASE eatmydata apt "$@"; }
 
+source ./toolbox-packages
+
 apt dist-upgrade -y
-
-# basic stuff
-apt install -y strace less vim manpages-dev git bash-completion wget gnupg curl procps valgrind gdb libvte-2.91-common libnss-myhostname apt-file neofetch sudo socat
-
-# kvm
-apt install -y python3-libvirt libvirt-clients
-
-# cockpit
-apt build-dep -y cockpit
-apt install -y --no-install-recommends npm chromium pyflakes3 python3-argcomplete expect python3-pycodestyle sassc appstream-util
+apt install -y ${packages} ${debian_packages}
+apt build-dep -y ${build_deps}
 
 # debug symbols for everything
 AVAILABLE="$(mktemp)"
@@ -60,12 +55,10 @@ run apt-cache pkgnames | sort >"${AVAILABLE}"
 run dpkg-query --show --showformat='${Package}-dbgsym\n' | sort >"${DEBUGS}"
 apt install $(comm -12 "${AVAILABLE}" "${DEBUGS}")
 
-# initialise apt-file
-run apt-file update
 
 # for every -dev on the system, install any doc package that shares its source package
-run dpkg-query -W -f '${Source}\n' '*-dev' | cut -f 1 -d ' ' | sort | uniq >"${DEVSRC}"
-run apt-cache showsrc $(cat "${DEVSRC}") | sed -n 's/^ \([^ ]*\) deb doc.*$/\1/p' >"${DOCS}"
+run dpkg-query -W -f '${Source}\n' '*-dev' | cut -f 1 -d ' ' | sort -u >"${DEVSRC}"
+run apt-cache showsrc $(cat "${DEVSRC}") | sed -n 's/^ \([^ ]*\) deb doc.*$/\1/p' | sort -u >"${DOCS}"
 apt install -y --no-install-recommends $(comm -12 "${DOCS}" "${AVAILABLE}")
 
 # link gtk-doc from the container to the Devhelp flatpak
