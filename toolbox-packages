@@ -13,6 +13,7 @@ packages='
   less
   neofetch
   npm
+  opensc
   procps
   python3-argcomplete
   python3-libvirt
