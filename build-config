@@ -3,3 +3,5 @@
 for dir in dotconfig/*; do
     ln -sf "$(realpath ${dir})" ~/.config
 done
+
+ln -sf "$(realpath localbin)" ~/.local/bin
