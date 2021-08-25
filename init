@@ -1,0 +1,7 @@
+#!/bin/sh -eux
+
+cd "$(realpath -m "$0"/..)"
+
+./build-config
+./build-src
+./build-fedora-toolbox 34
