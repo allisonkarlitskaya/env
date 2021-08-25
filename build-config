@@ -1,0 +1,5 @@
+#!/bin/sh -eux
+
+for dir in dotconfig/*; do
+    ln -sf "$(realpath ${dir})" ~/.config
+done
