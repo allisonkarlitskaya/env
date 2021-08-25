@@ -1,0 +1,25 @@
+#!/bin/sh -eux
+
+dconf load / <<EOF
+[org/gnome/desktop/input-sources]
+per-window=false
+sources=[('xkb', 'us+euro')]
+xkb-options=['lv3:ralt_switch', 'compose:caps', 'esperanto:qwerty']
+
+[org/gnome/desktop/wm/keybindings]
+switch-applications=@as []
+switch-applications-backward=@as []
+switch-windows=['<Alt>Tab']
+switch-windows-backward=['<Shift><Alt>Tab']
+
+[org/gnome/desktop/interface]
+clock-show-weekday=true
+
+[org/gnome/desktop/calendar]
+show-weekdate=true
+EOF
+
+if ! gnome-extensions list | grep -q Move_Clock@rmy.pobox.com; then
+    busctl --user call org.gnome.Shell.Extensions /org/gnome/Shell/Extensions \
+        org.gnome.Shell.Extensions InstallRemoteExtension s 'Move_Clock@rmy.pobox.com'
+fi
