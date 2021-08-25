@@ -9,13 +9,6 @@ toolbox -y create -c f$RELEASE -r ${RELEASE}
 podman start f$RELEASE
 run() { podman exec -i f$RELEASE "$@"; }
 
-echo proxy=http://localhost:3142/ | run tee -a /etc/dnf/dnf.conf
-run find /etc/yum.repos.d -type f -exec sed -e 's@^metalink=@#metalink=@' -e 's@^#baseurl=.*fedora/linux@baseurl=http://download.fedoraproject.org/pub/fedora/linux@' -i '{}' +
-run dnf config-manager --set-disabled fedora-cisco-openh264
-run dnf config-manager --set-disabled fedora-cisco-openh264-debuginfo
-run dnf config-manager --set-disabled fedora-modular
-run dnf config-manager --set-disabled updates-modular
-
 source ./toolbox-packages
 
 run dnf update -y
