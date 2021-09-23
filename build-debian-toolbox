@@ -23,7 +23,6 @@ deb-src http://deb.debian.org/debian ${RELEASE} main contrib non-free
 deb http://deb.debian.org/debian-debug ${RELEASE}-debug main contrib non-free
 EOF
 
-echo 'Acquire::http::Proxy "http://127.0.0.1:3142";' | run tee /etc/apt/apt.conf.d/01proxy
 echo force-unsafe-io | run tee -a /etc/dpkg/dpkg.cfg.d/unsafe-io
 echo ${RELEASE} | run tee /etc/hostname
 run hostname ${RELEASE}
