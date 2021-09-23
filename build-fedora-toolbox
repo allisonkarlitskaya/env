@@ -14,3 +14,5 @@ source ./toolbox-packages
 run dnf update -y
 run dnf build-dep -y ${build_deps}
 run dnf install -y ${packages} ${fedora_packages}
+
+run ln -Tsf host/run/pcscd /run/pcscd
