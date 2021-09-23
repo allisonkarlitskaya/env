@@ -19,6 +19,7 @@ packages='
   python3-libvirt
   python3-pycodestyle
   python3-pyflakes
+  python3-yaml
   sassc
   socat
   strace
@@ -30,13 +31,27 @@ packages='
 
 debian_packages='
   appstream-util
+  iproute2
+  libgnutls28-dev
   libnss-myhostname
+  libvirt-clients
   libvte-2.91-common
   manpages-dev
   pyflakes3
-  libvirt-clients
+  virtinst
 '
 
 fedora_packages='
+  dbus-daemon
+  fedora-packager
+  glibc-langpack-de
+  glibc-langpack-en
   libvirt-client
+  libvirt-daemon-driver-qemu
+  pcsc-lite-devel
+  python3-devel
+  qemu-img
+  qemu-kvm
+  swig
+  virt-install
 '
