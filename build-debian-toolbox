@@ -14,6 +14,7 @@ run umount /var/log/journal
 
 cat <<EOF | run debconf-set-selections
 man-db man-db/auto-update boolean false
+usrmerge usrmerge/autoconvert boolean true
 EOF
 
 cat<<EOF | run tee /etc/apt/sources.list
@@ -30,7 +31,7 @@ run ln -Tsf host/run/pcscd /run/pcscd
 run ln -Tsf host/run/sshd /run/sshd
 
 run apt-get update
-run apt install -y eatmydata dialog locales apt-file
+run apt-get install -y eatmydata locales apt-file bash usrmerge
 run sed -i "s/nullok_secure/nullok/" /etc/pam.d/common-auth
 (for locale in ${LOCALES}; do echo "$locale.UTF-8 UTF-8"; done) | run tee /etc/locale.gen
 run locale-gen
