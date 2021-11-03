@@ -7,6 +7,7 @@ packages='
   chromium
   curl
   expect
+  fish
   gdb
   git
   gnupg
@@ -25,7 +26,7 @@ packages='
   strace
   sudo
   valgrind
-  vim
+  neovim
   wget
 '
 
