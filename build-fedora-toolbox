@@ -2,12 +2,13 @@
 
 LOCALES="en_US en_CA en_DK de_DE en_IE"
 RELEASE=${1:-$(. /lib/os-release && echo $VERSION_ID)}
+NAME="fedora-toolbox-${RELEASE}"
 
-toolbox rm -f f$RELEASE || true
-toolbox -y create -c f$RELEASE -r ${RELEASE}
+toolbox rm -f ${NAME} || true
+toolbox -y create -r ${RELEASE}
 
-podman start f$RELEASE
-run() { podman exec -i f$RELEASE "$@"; }
+podman start ${NAME}
+run() { podman exec -i "${NAME}" "$@"; }
 
 source ./toolbox-packages
 
