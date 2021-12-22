@@ -1,9 +1,5 @@
-Match exec "test -f /lib64/opensc-pkcs11.so"
-	PKCS11Provider /lib64/opensc-pkcs11.so
-
-Match exec "test -f /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so"
-	PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
-
+Include cockpit-client-test.config
+IdentityAgent none
 
 Match final host 127.0.0.2
 	User root
@@ -19,5 +15,3 @@ Host c
 Host d
 	Hostname 127.0.0.2
 	Port 2202
-
-Include cockpit-client-test.config
