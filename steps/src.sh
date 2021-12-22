@@ -1,5 +1,3 @@
-#!/bin/sh -eux
-
 worktree_repos='
   github:cockpit-project/bots
   github:cockpit-project/cockpit
@@ -12,7 +10,6 @@ worktree_repos='
 reference_repos='
   github:linux-pam/linux-pam
   github:openssh/openssh-portable
-  gitlab:cki-project/kernel-ark
   gnome:glib
   gnome:glib-networking
   https://sourceware.org/git/glibc.git
@@ -24,7 +21,7 @@ for repo in ${worktree_repos}; do
     if [ ! -d "${srcdir}" ]; then
         mkdir -p "${srcdir}"
         git clone "${repo}" "${srcdir}/main"
-	git -C "${srcdir}/main" remote add lis "github:allisonkarlitskaya/${repo#*/}"
+        git -C "${srcdir}/main" remote add lis "github:allisonkarlitskaya/${repo#*/}"
     fi
 done
 
