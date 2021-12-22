@@ -1,0 +1,251 @@
+#!/usr/bin/python3
+
+# Simple GNU Stow reimplementation without folding, error checking, mixing
+# modes, or esoteric runtime dependencies.  Supports hooks.
+
+import argparse
+import os
+import subprocess
+import sys
+
+class Installer:
+    pass
+
+# The RealInstaller actually makes changes, optionally logging them verbosely
+class RealInstaller(Installer):
+    def __init__(self, verbose):
+        self.verbose = verbose
+
+    def unlink(self, install_file):
+        if self.verbose:
+            print(f'unlink {install_file}')
+        os.unlink(install_file)
+
+    def symlink(self, package_file, install_file):
+        if self.verbose:
+            print(f'symlink {install_file} → {package_file}')
+        os.symlink(package_file, install_file)
+
+    def makedirs(self, install_path):
+        try:
+            os.mkdir(install_path)
+            if self.verbose:
+                print(f'mkdir {install_path}', file=sys.stderr)
+        except FileNotFoundError:
+            self.makedirs(os.path.dirname(install_path))
+            os.makedir(install_path)
+        except FileExistsError:
+            if not os.path.isdir(install_path):
+                raise
+
+    def try_rmdir(self, install_path):
+        try:
+            os.rmdir(install_path)
+            if self.verbose:
+                print(f'rmdir {install_path}', file=sys.stderr)
+        except OSError:
+            pass
+
+# The DryrunInstaller doesn't make any changes
+class DryRunInstaller(Installer):
+    def __init__(self):
+        # we keep track of what we create and remove to enable
+        # better reporting of mkdir and rmdir operations
+        self.created_files = set()
+        self.deleted_files = set()
+
+    def deleted(self, file):
+        self.created_files.discard(file)
+        self.deleted_files.add(file)
+
+    def created(self, file):
+        self.created_files.add(file)
+        self.deleted_files.discard(file)
+
+    def unlink(self, file):
+        print(f'# unlink {file}')
+        self.deleted(file)
+
+    def symlink(self, package_file, install_file):
+        print(f'# symlink {install_file} → {package_file}')
+        self.created(install_file)
+
+    def makedirs(self, path):
+        if os.path.exists(path) or path in self.created_files:
+            return
+        self.makedirs(os.path.dirname(path))
+        print(f'# mkdir {path}', file=sys.stderr)
+        self.created(path)
+
+    def try_rmdir(self, path):
+        try:
+            if not set(entry.path for entry in os.scandir(path)) - self.deleted_files:
+                print(f'# rmdir {path}', file=sys.stderr)
+                self.deleted(path)
+        except FileNotFoundError:
+            pass
+
+
+class Package:
+    def __init__(self, path):
+        self.path = os.path.realpath(path)
+
+    def owns(self, path):
+        return os.path.realpath(path).startswith(self.path + '/')
+
+
+class Stow:
+    install_dir = None
+    package_dir = None
+    dotfiles = False
+    verbose = False
+    dry_run = False
+    installer = None
+    delete_links = False
+    create_links = False
+
+    # replaces 'dot-' with '.' in the installation path, if appropriate
+    def dotmap(self, name):
+        if self.dotfiles and name.startswith('dot-'):
+            name = name.replace('dot-', '.', 1)
+        return name
+
+    def try_scandir(self, path):
+        try:
+            return os.scandir(path)
+        except FileNotFoundError:
+            return []
+
+    def execute_hook(self, action, hook, name):
+        if hook is not None:
+            subprocess.check_call([hook[0], action, *hook[1:], name])
+
+    # traverse the package tree, modifying the install tree
+    def traverse(self, package, package_path, install_path, hook=None):
+        # we look for a .stow-hook file here to execute actions on
+        # install/remove, but we ignore hooks that belong to the package, to
+        # enable clean installation/removal of the script itself.
+        hookfile = os.path.join(install_path, '.stowhook')
+        if os.path.isfile(hookfile) and os.access(hookfile, os.X_OK) and not package.owns(hookfile):
+            hook = [hookfile]
+
+        # for each directory in the package directory, we inspect that (entire)
+        # directory in the install directory for links to remove.  this is a
+        # compromise solution for finding links to files that no longer exist
+        # in the package (and will work, as long as the directories that
+        # contained those files still exist in the package).
+        for install_entry in self.try_scandir(install_path):
+            if self.delete_links and install_entry.is_symlink() and package.owns(install_entry.path):
+                self.execute_hook('remove', hook, install_entry.name)
+
+                self.installer.unlink(install_entry.path)
+
+        # main iterative step: we traverse every item in the package
+        did_mkdir = False
+        for package_entry in os.scandir(package_path):
+            package_file = package_entry.path
+            install_name = self.dotmap(package_entry.name)
+            install_file = os.path.join(install_path, install_name)
+
+            if package_entry.is_symlink():
+                sys.exit('Stowing symlinks is unsupported')
+            elif package_entry.is_dir():
+                self.traverse(package, package_file, install_file, hook and hook + [install_name])
+            elif self.create_links:
+                if not did_mkdir:
+                    self.installer.makedirs(install_path)
+                    did_mkdir = True
+
+                symlink_target = os.path.relpath(package_file, start=install_path)
+                self.installer.symlink(symlink_target, install_file)
+
+                self.execute_hook('add', hook, install_name)
+
+        # we don't bother to try to guess if rmdir might work: we just always
+        # attempt it, and if it does, then it does.  we wouldn't be here unless
+        # the package hadn't (at some point) potentially created this directory.
+        if self.delete_links:
+            self.installer.try_rmdir(install_path)
+
+    def parse_arguments(self, args=None, is_rc=False):
+        parser = argparse.ArgumentParser()
+
+        parser.add_argument('--dir', '-d', metavar='DIR', help="the packages directory (default: '.')")
+        parser.add_argument('--target', '-t', metavar='DIR',
+                            help="the installation directory (default: parent directory of the packages directory)")
+        parser.add_argument('--verbose', '-v', action='store_true',
+                            help='produce output for each operation performed')
+        parser.add_argument('--dry-run', '-n', action='store_true',
+                            help='merely print what would be done, without actually doing it')
+        parser.add_argument('--dotfiles', action='store_true',
+                            help="replace 'dot-' with '.' at the start of package filenames")
+
+        if is_rc:
+            # only accept (ignored) compat options via stowrc
+            parser.add_argument('--no-folding', action='store_true')
+        else:
+            # only accept "action" arguments via command-line
+            actions_group = parser.add_argument_group(title='mode')
+            actions = actions_group.add_mutually_exclusive_group()
+            actions.add_argument('--stow', '-S', action='store_true', help='install packages (the default)')
+            actions.add_argument('--delete', '-D', action='store_true', help='uninstall packages')
+            actions.add_argument('--restow', '-R', action='store_true', help='reinstall packages')
+            parser.add_argument('package', nargs='+', help='one or more packages to process')
+
+        args = parser.parse_args(args=args)
+
+        if args.dir:
+            self.package_dir = os.path.realpath(os.path.expanduser(args.dir))
+        if args.target:
+            self.install_dir = os.path.realpath(os.path.expanduser(args.target))
+        if args.verbose:
+            self.verbose = True
+        if args.dry_run:
+            self.dry_run = True
+        if args.dotfiles:
+            self.dotfiles = True
+
+        return args
+
+    def main(self):
+        for filename in ['.stowrc', '~/.stowrc']:
+            try:
+                with open(os.path.expanduser(filename)) as fp:
+                    self.parse_arguments(args=[line.strip('\n') for line in fp], is_rc=True)
+            except FileNotFoundError:
+                pass
+
+        args = self.parse_arguments()
+
+        if self.package_dir is None:
+            self.package_dir = os.path.realpath('.')
+
+        if self.install_dir is None:
+            self.install_dir = os.path.dirname(self.package_dir)
+
+        if not os.path.isdir(self.package_dir):
+            return f'Package directory {self.package_dir} does not exist'
+        if not os.path.isdir(self.install_dir):
+            return f'Installation directory {self.install_dir} does not exist'
+
+        self.delete_links = args.restow or args.delete
+        self.create_links = not args.delete
+
+        if self.dry_run:
+            self.installer = DryRunInstaller()
+        else:
+            self.installer = RealInstaller(self.verbose)
+
+        for package in args.package:
+            package = Package(os.path.join(self.package_dir, package))
+
+            if not os.path.isdir(package.path):
+                return f'Package {package} does not exist in package directory'
+
+            self.traverse(package, package.path, self.install_dir)
+
+
+if __name__ == '__main__':
+    stow = Stow()
+    result = stow.main()
+    sys.exit(result)
