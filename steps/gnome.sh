@@ -1,5 +1,3 @@
-#!/bin/sh -eux
-
 dconf load / <<EOF
 [org/gnome/desktop/input-sources]
 per-window=false
