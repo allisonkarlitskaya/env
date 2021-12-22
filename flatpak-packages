@@ -1,0 +1,17 @@
+org.gnome.Characters
+org.gnome.Evince
+org.gnome.FileRoller
+org.gnome.Maps
+org.gnome.NautilusPreviewer
+org.gnome.Weather
+org.gnome.baobab
+org.gnome.clocks
+org.gnome.eog
+org.gnome.gedit
+ 
+com.bitwarden.desktop
+com.spotify.Client
+org.cockpit_project.CockpitClient
+org.mozilla.firefox
+org.signal.Signal
+org.telegram.desktop
