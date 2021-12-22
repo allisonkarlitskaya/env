@@ -10,8 +10,7 @@ toolbox -y create -c $RELEASE --image docker.io/$DISTRO:$RELEASE
 podman start $RELEASE
 run() { podman exec -i $RELEASE "$@"; }
 
-graphroot="$(podman info -f '{{.Store.GraphRoot}}')"
-subvolume="$(run egrep -o "${graphroot}/btrfs/subvolumes/[0-9a-f]{64}" /proc/mounts | head -n1)"
+subvolume="$(run sed -n 's@^.* / .*subvol=\(.*\) 0 0$@\1@p' /proc/mounts)"
 
 run umount /var/log/journal
 
@@ -29,6 +28,7 @@ EOF
 echo force-unsafe-io | run tee -a /etc/dpkg/dpkg.cfg.d/unsafe-io
 run ln -Tsf host/run/pcscd /run/pcscd
 run ln -Tsf host/run/sshd /run/sshd
+run ln -Tsf ${subvolume} /run/subvolume
 
 run apt-get update
 run apt-get install -y eatmydata locales apt-file bash usrmerge
