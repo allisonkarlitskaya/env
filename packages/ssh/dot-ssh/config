@@ -1,9 +1,16 @@
+Match exec "test -f /lib64/opensc-pkcs11.so"
+	PKCS11Provider /lib64/opensc-pkcs11.so
+
+Match exec "test -f /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so"
+	PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+
+
 Match final host 127.0.0.2
 	User root
-        IdentityFile ~/.config/ssh/cockpit-identity
+	IdentityFile ~/.config/ssh/cockpit-identity
 	StrictHostKeyChecking no
-        UserKnownHostsFile /dev/null
-        CheckHostIP no
+	UserKnownHostsFile /dev/null
+	CheckHostIP no
 
 Host c
 	Hostname 127.0.0.2
