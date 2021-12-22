@@ -1,0 +1,13 @@
+#!/bin/sh -eux
+
+RELEASE=stable
+run() { podman exec -i $RELEASE "$@"; }
+
+
+graphroot="$(podman info -f '{{.Store.GraphRoot}}')"
+subvolume="$(run egrep -o "${graphroot}/btrfs/subvolumes/[0-9a-f]{64}" /proc/mounts | head -n1)"
+gtkdocdir="${subvolume}/usr/share/gtk-doc" 
+
+if test -d "${gtkdocdir}" -a -d ~/.var/app/org.gnome.Devhelp/data; then
+  ln -Tsf "${gtkdocdir}" ~/.var/app/org.gnome.Devhelp/data/gtk-doc
+fi
