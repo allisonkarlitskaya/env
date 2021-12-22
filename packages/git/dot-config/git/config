@@ -1,0 +1,43 @@
+[format]
+	pretty = fuller
+
+[user]
+	email = allison.karlitskaya@redhat.com
+	name = Allison Karlitskaya
+
+[core]
+	excludesfile = ~/.config/git/gitignore
+	editor = vi
+
+[url "ssh://git@github.com/"]
+	pushInsteadOf = https://github.com/
+	pushInsteadOf = github:
+
+[url "https://github.com/"]
+	insteadOf = github:
+
+[url "ssh://git@gitlab.com/"]
+	pushInsteadOf = https://gitlab.com/
+	pushInsteadOf = gitlab:
+
+[url "https://gitlab.com/"]
+	insteadOf = gitlab:
+
+[url "ssh://git@gitlab.gnome.org/GNOME/"]
+	pushInsteadOf = https://gitlab.gnome.org/GNOME/
+	pushInsteadOf = gnome:
+
+[url "https://gitlab.gnome.org/GNOME/"]
+	insteadOf = gnome:
+
+[url "ssh://git@pagure.io/"]
+	pushInsteadOf = https://pagure.io/
+	pushInsteadOf = fedora:
+
+[url "https://pagure.io/"]
+	insteadOf = fedora:
+
+[pull]
+	ff = only
+[init]
+	defaultBranch = main

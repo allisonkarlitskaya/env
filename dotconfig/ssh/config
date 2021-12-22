@@ -1,4 +1,0 @@
-UserKnownHostsFile ~/.cache/ssh_known_hosts
-
-Match exec "test -x /lib64/opensc-pkcs11.so"
-	PKCS11Provider /lib64/opensc-pkcs11.so

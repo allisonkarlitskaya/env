@@ -3,4 +3,4 @@
 # https://bugzilla.redhat.com/show_bug.cgi?id=1949436
 export SSH_ASKPASS_REQUIRE=never
 
-exec /usr/bin/ssh -F ~/.config/ssh/config "$@"
+exec /usr/bin/ssh "$@"

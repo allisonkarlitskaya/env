@@ -1,0 +1,16 @@
+Match final host 127.0.0.2
+	User root
+        IdentityFile ~/.config/ssh/cockpit-identity
+	StrictHostKeyChecking no
+        UserKnownHostsFile /dev/null
+        CheckHostIP no
+
+Host c
+	Hostname 127.0.0.2
+	Port 2201
+
+Host d
+	Hostname 127.0.0.2
+	Port 2202
+
+Include cockpit-client-test.config
