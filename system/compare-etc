@@ -1,0 +1,67 @@
+#!/usr/bin/python3
+
+import fnmatch
+import os
+import sys
+
+class File:
+    def __init__(self, entry):
+        self.entry = entry
+        self.target = os.readlink(entry.path) if entry.is_symlink() else None
+
+    def describe(self):
+        if self.target is not None:
+            return ('symlink', self.target)
+        elif self.entry.is_dir():
+            return ('directory',)
+        else:
+            assert self.entry.is_file()
+            with open(self.entry.path, 'rb') as fp:
+                return ('file', fp.read())
+
+class Directory:
+    def __init__(self, path, ignore=set()):
+        self.path = path
+        self.ignore = ignore
+
+    def traverse(self, path):
+        for entry in os.scandir(path):
+            relative = os.path.relpath(entry.path, start=self.path)
+            if entry.name.startswith('.') or relative in self.ignore:
+                continue
+            yield (relative, File(entry))
+            if entry.is_dir(follow_symlinks=False):
+                yield from self.traverse(entry.path)
+
+    def get_files(self):
+        return dict(self.traverse(self.path))
+
+changes = Directory('etc').get_files()
+
+ignore = set()
+delete = set()
+change = dict()
+
+for name, file in changes.items():
+    if file.target == 'ignore':
+        ignore.add(name)
+    elif file.target == 'delete':
+        delete.add(name)
+    else:
+        change[name] = file
+
+reference = Directory('/usr/etc', ignore).get_files()
+etc = Directory('/etc', ignore).get_files()
+
+for name in delete:
+    del reference[name]
+reference.update(change)
+
+everything = set.union(set(etc), set(reference))
+for name in everything:
+    if name not in etc:
+        print(f'missing /etc/{name}')
+    elif name not in reference:
+        print(f'unexpected /etc/{name}')
+    elif etc[name].describe() != reference[name].describe():
+        print(f'changed /etc/{name}')
