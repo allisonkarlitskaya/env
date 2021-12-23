@@ -27,7 +27,7 @@ class Directory:
     def traverse(self, path):
         for entry in os.scandir(path):
             relative = os.path.relpath(entry.path, start=self.path)
-            if entry.name.startswith('.') or relative in self.ignore:
+            if entry.name.startswith('.') or relative in self.ignore or relative.endswith('-'):
                 continue
             yield (relative, File(entry))
             if entry.is_dir(follow_symlinks=False):
