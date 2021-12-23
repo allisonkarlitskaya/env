@@ -1,5 +1,4 @@
 Include cockpit-client-test.config
-IdentityAgent none
 
 Match final host 127.0.0.2
 	User root

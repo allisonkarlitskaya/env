@@ -1,0 +1,11 @@
+#!/bin/sh -eux
+
+if [ "$(id -u)" != 0 ]; then
+    exec pkexec $0 "$@"
+fi
+
+cd "$(realpath -m "$0"/..)"
+
+for i in steps/*.sh; do
+    sh -eux "$i"
+done
