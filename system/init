@@ -1,5 +1,7 @@
 #!/bin/sh -eux
 
+test ! -f /run/.containerenv
+
 if [ "$(id -u)" != 0 ]; then
     exec pkexec $0 "$@"
 fi
