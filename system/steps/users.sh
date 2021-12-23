@@ -19,3 +19,6 @@ usermod -c "Administrator" admin
 
 # only 'admin' in wheel
 groupmod -U admin wheel
+
+# install the icons
+cp -TrvZ packages/user-icons /
