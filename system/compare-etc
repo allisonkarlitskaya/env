@@ -2,6 +2,7 @@
 
 import fnmatch
 import os
+import subprocess
 import sys
 
 class File:
@@ -36,32 +37,41 @@ class Directory:
     def get_files(self):
         return dict(self.traverse(self.path))
 
-changes = Directory('etc').get_files()
+def main(changes_dir):
+    changes = Directory(changes_dir).get_files()
 
-ignore = set()
-delete = set()
-change = dict()
+    ignore = set()
+    delete = set()
+    change = dict()
 
-for name, file in changes.items():
-    if file.target == 'ignore':
-        ignore.add(name)
-    elif file.target == 'delete':
-        delete.add(name)
+    for name, file in changes.items():
+        if file.target == 'ignore':
+            ignore.add(name)
+        elif file.target == 'delete':
+            delete.add(name)
+        else:
+            change[name] = file
+
+    reference = Directory('/usr/etc', ignore).get_files()
+    etc = Directory('/etc', ignore).get_files()
+
+    for name in delete:
+        del reference[name]
+    reference.update(change)
+
+    everything = set.union(set(etc), set(reference))
+    for name in everything:
+        if name not in etc:
+            print(f'missing /etc/{name}')
+        elif name not in reference:
+            print(f'unexpected /etc/{name}')
+        elif etc[name].describe() != reference[name].describe():
+            print(f'changed /etc/{name}')
+
+if __name__ == '__main__':
+    changes_dir = sys.argv[1] if len(sys.argv) > 1 else 'etc'
+
+    if os.getuid() == 0:
+        main(changes_dir)
     else:
-        change[name] = file
-
-reference = Directory('/usr/etc', ignore).get_files()
-etc = Directory('/etc', ignore).get_files()
-
-for name in delete:
-    del reference[name]
-reference.update(change)
-
-everything = set.union(set(etc), set(reference))
-for name in everything:
-    if name not in etc:
-        print(f'missing /etc/{name}')
-    elif name not in reference:
-        print(f'unexpected /etc/{name}')
-    elif etc[name].describe() != reference[name].describe():
-        print(f'changed /etc/{name}')
+        subprocess.check_call(['pkexec', __file__, os.path.abspath(changes_dir)])
