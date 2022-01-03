@@ -1,4 +1,7 @@
 dconf load / <<EOF
+[org/gnome/desktop/search-providers]
+disabled=['org.gnome.Software.desktop']
+
 [org/gnome/desktop/input-sources]
 per-window=false
 sources=[('xkb', 'us+euro')]
