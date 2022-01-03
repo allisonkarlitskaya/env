@@ -1,0 +1,7 @@
+#!/bin/sh
+
+if test -f /run/.containerenv; then
+    exec flatpak-spawn --host "$@"
+else
+    exec "$@"
+fi

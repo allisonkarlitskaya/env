@@ -8,6 +8,7 @@ org.gnome.baobab
 org.gnome.clocks
 org.gnome.eog
 org.gnome.gedit
+org.gnome.meld
  
 com.bitwarden.desktop
 com.irccloud.desktop

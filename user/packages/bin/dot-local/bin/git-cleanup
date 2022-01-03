@@ -1,0 +1,75 @@
+#!/usr/bin/python3
+
+import subprocess
+
+def git_check_output(*args):
+    return subprocess.check_output(('git',) + args, text=True).strip()
+
+def parse_worktree_attrs(attrs):
+    # possible as a dictionary comprehension, but more legible as a generator
+    for attr in attrs.split('\n'):
+        if ' ' in attr:
+            yield attr.split(' ', 1)  # String attribute
+        else:
+            yield attr, True          # Boolean attribute
+
+def worktree_branches():
+    output = git_check_output('worktree', 'list', '--porcelain')
+    for attrs in output.strip().split('\n\n'):
+        attrs = dict(parse_worktree_attrs(attrs))
+
+        worktree = attrs['worktree']
+        print(f'# worktree {worktree}')
+        if branch := attrs.get('branch'):
+            if 'locked' in attrs:
+                prunable = False
+            elif 'prunable' in attrs:
+                prunable = True
+            else:
+                prunable = git_check_output('-C', worktree, 'status', '--porcelain') == ''
+
+            yield branch, worktree if prunable else None
+
+
+def main():
+    protected = set()
+    prunable = dict()
+
+    for branch, prunedir in worktree_branches():
+        if prunedir:
+            prunable[branch] = prunedir
+        else:
+            protected.add(branch)
+
+    candidates = git_check_output('for-each-ref', '--format=%(refname)', 'refs/heads/*', 'refs/remotes/lis/*')
+
+    disposable = set()
+    for branch in candidates.splitlines():
+        branch = branch.strip()
+
+        if branch in protected or branch.endswith('/HEAD') or branch.endswith('/main'):
+            continue
+
+        print(f'# branch {branch}')
+
+        cherry = git_check_output('cherry', '-v', 'main', branch)
+        for commit in cherry.splitlines():
+            if commit.startswith('+'):
+                break
+        else:
+            disposable.add(branch)
+
+    for branch in prunable:
+        if branch in disposable:
+            print(f'git worktree remove {prunable[branch]}')
+
+    for branch in disposable:
+        if branch.startswith('refs/heads/'):
+            shortname = branch.replace('refs/heads/', '')
+            print(f'git branch -D {shortname}')
+        elif branch.startswith('refs/remotes/'):
+            remote, _, shortname = branch.replace('refs/remotes/', '').partition('/')
+            print(f'git push {remote} :{shortname}')
+
+if __name__ == '__main__':
+    main()

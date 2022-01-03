@@ -1,0 +1,16 @@
+#!/bin/sh
+
+# run concurrent `make` in the correct directory:
+#  - this directory, if a Makefile is present
+#  - the top-level of the current project, if using git
+
+set -e
+
+if [ -f Makefile ]; then
+    dir=''
+else
+    dir="$(git rev-parse --show-toplevel)"
+fi
+
+set -x
+make -j "$(nproc)" ${dir:+-C "${dir}"} WEBPACK_PACKAGES= "$@"
