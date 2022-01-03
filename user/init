@@ -4,6 +4,9 @@ test ! -f /run/.containerenv
 
 cd "$(realpath -m "$0"/..)"
 
+# default umask is sometimes 0002 which causes problems with some config files
+chmod -R g-w .
+
 for i in steps/*.sh; do
     sh -eux "$i"
 done
