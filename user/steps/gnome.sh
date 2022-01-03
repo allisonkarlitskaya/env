@@ -1,4 +1,9 @@
 dconf load / <<EOF
+[org/gnome/software]
+download-updates=false
+download-updates-notify=false
+first-run=false
+
 [org/gnome/desktop/search-providers]
 disabled=['org.gnome.Software.desktop']
 
