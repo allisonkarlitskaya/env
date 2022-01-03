@@ -33,7 +33,7 @@ class RealInstaller(Installer):
                 print(f'mkdir {install_path}', file=sys.stderr)
         except FileNotFoundError:
             self.makedirs(os.path.dirname(install_path))
-            os.makedir(install_path)
+            os.mkdir(install_path)
         except FileExistsError:
             if not os.path.isdir(install_path):
                 raise
