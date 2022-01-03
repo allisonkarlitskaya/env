@@ -10,7 +10,9 @@ org.gnome.eog
 org.gnome.gedit
  
 com.bitwarden.desktop
+com.irccloud.desktop
 com.spotify.Client
+im.riot.Riot
 org.cockpit_project.CockpitClient
 org.mozilla.firefox
 org.signal.Signal
