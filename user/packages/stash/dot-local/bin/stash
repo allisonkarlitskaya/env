@@ -118,7 +118,7 @@ class Stow:
 
     def execute_hook(self, action, hook, name):
         if hook is not None:
-            subprocess.check_call([hook[0], action, *hook[1:], name])
+            subprocess.check_call([hook[0], action, *hook[1:], name], cwd=os.path.dirname(hook[0]))
 
     # traverse the package tree, modifying the install tree
     def traverse(self, package, package_path, install_path, hook=None):
