@@ -1,0 +1,125 @@
+#!/usr/bin/python3
+
+from gi.repository import GLib
+import argparse
+import os
+import subprocess
+import sys
+import uuid
+
+def set_contents(filename, contents):
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
+    GLib.file_set_contents(filename.encode(), contents.encode())
+
+def create(shortname, directory, exists):
+    if exists:
+        sys.exit(f'Cannot create profile {shortname} because it already exists')
+
+    dns = f'ca.desrt.toolbox-terminal.{shortname}'
+    libexec = '/usr/libexec'
+    profile = str(uuid.uuid5(uuid.NAMESPACE_DNS, '.'.join(dns.split('.')[::-1])))
+
+    if 'debian' in shortname:
+        icon = 'debian'
+    elif 'fedora' in shortname:
+        icon = 'fedora'
+
+    files = {
+        f'systemd/user/{dns}.service':
+        f"""
+        [Unit]
+        Description=GNOME Terminal Server ({shortname} Toolbox)
+
+        [Service]
+        Slice=apps-{dns}.slice
+        Type=dbus
+        BusName={dns}
+        ExecStart={libexec}/gnome-terminal-server --app-id={dns}
+        """,
+
+        f'applications/{dns}.desktop':
+        f"""
+        [Desktop Entry]
+        Type=Application
+        Name={shortname} Toolbox
+        Icon={icon}
+        StartupNotify=true
+        Exec=gnome-terminal --profile={profile} --app-id={dns}
+        """,
+
+        f'dbus-1/services/{dns}.service':
+        f"""
+        [D-BUS Service]
+        Name={dns}
+        SystemdService={dns}.service
+        """,
+
+        f'gsettings-list-items/org.gnome.Terminal.ProfilesList/{profile}':
+        f"""
+        [org.gnome.Terminal.Legacy.Profile]
+        use-custom-command=true
+        custom-command='toolbox run -c {shortname} fish'
+        visible-name='Toolbox ({shortname})'
+
+        audible-bell=false
+        background-color='rgb(0,0,0)'
+        default-size-columns=120
+        default-size-rows=48
+        font='Monospace 12'
+        foreground-color='rgb(208,207,204)'
+        palette=['rgb(46,52,54)', 'rgb(204,0,0)', 'rgb(78,154,6)', 'rgb(196,160,0)', 'rgb(52,101,164)', 'rgb(117,80,123)', 'rgb(6,152,154)', 'rgb(211,215,207)', 'rgb(85,87,83)', 'rgb(239,41,41)', 'rgb(138,226,52)', 'rgb(252,233,79)', 'rgb(114,159,207)', 'rgb(173,127,168)', 'rgb(52,226,226)', 'rgb(238,238,236)']
+        use-system-font=false
+        use-theme-colors=false
+        """,
+        }
+
+    for filename, contents in files.items():
+        set_contents(f'{directory}/{filename}', contents)
+
+def install(shortname, directory, exists):
+    if not exists:
+        create(shortname, directory, False)
+    subprocess.check_call(['stash', '-v', '-R', shortname], cwd=os.path.dirname(directory))
+
+def uninstall(shortname, directory, exists):
+    if not exists:
+        sys.exit(f'Cannot uninstall non-existent profile {shortname}')
+    subprocess.check_call(['stash', '-v', '-D', shortname], cwd=os.path.dirname(directory))
+
+def delete(shortname, directory, exists):
+    if not exists:
+        sys.exit(f'Cannot delete non-existent profile {shortname}')
+    uninstall(shortname, directory, True)
+    # TODO: delete
+
+def main():
+    parser = argparse.ArgumentParser(description='Manage GSettingsLists')
+    parser.add_argument('cmd', metavar='CMD', help="The command: 'create' or 'install'")
+    parser.add_argument('shortname', metavar='CONTAINER', help='The toolbox container name')
+    args = parser.parse_args()
+
+    home = os.path.expanduser('~')
+    datadir = f'{home}/.local/share'
+    stowdir = f'{datadir}/toolbox-terminal-profiles'
+    stowrc = f'{stowdir}/.stowrc'
+    directory = f'{stowdir}/{args.shortname}'
+
+    os.makedirs(stowdir, exist_ok=True)
+    if not os.path.exists(stowrc):
+        set_contents(stowrc, '--no-folding\n')
+
+    exists = os.path.exists(directory)
+
+    if args.cmd == 'create':
+        create(args.shortname, directory, exists)
+    elif args.cmd == 'install':
+        install(args.shortname, directory, exists)
+    elif args.cmd == 'uninstall':
+        uninstall(args.shortname, directory, exists)
+    elif args.cmd == 'delete':
+        delete(args.shortname, directory, exists)
+    else:
+        parser.error(f'unknown command {args.cmd}')
+
+if __name__ == '__main__':
+    main()
