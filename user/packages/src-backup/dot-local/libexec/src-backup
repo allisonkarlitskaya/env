@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -eux
+
+# Run me once per hour
+
+srcdir="${HOME}/src"
+snapshot_dir="${HOME}/.var/snapshots/src"
+
+[ -d "${HOME}" ]
+[ -d "${srcdir}" ]
+
+# always make the hourly snapshot, failing otherwise
+mkdir -p "${snapshot_dir}/hourly"
+hourly="${snapshot_dir}/hourly/$(date -u +%Y%m%d.%H)"
+[ ! -e "${hourly}" ]
+btrfs subvolume snapshot -r "${srcdir}" "${hourly}"
+
+# daily, if it doesn't exist yet
+mkdir -p "${snapshot_dir}/daily"
+daily="${snapshot_dir}/daily/$(date -u +%Y%m%d)"
+[ -e "${daily}" ] || btrfs subvolume snapshot -r "${hourly}" "${daily}"
+
+# weekly, if it doesn't exist yet
+mkdir -p "${snapshot_dir}/weekly"
+weekly="${snapshot_dir}/weekly/$(date -u +%G-W%V)"
+[ -e "${weekly}" ] || btrfs subvolume snapshot -r "${hourly}" "${weekly}"
+
+# prune
+# ridiculously explicitly-coded to avoid accidental deletions
+for file in $(ls "${snapshot_dir}/hourly" | head -n-5); do
+    btrfs property set "${snapshot_dir}/hourly/${file}" ro false
+    btrfs subvolume delete "${snapshot_dir}/hourly/${file}"
+done
+
+for file in $(ls "${snapshot_dir}/daily" | head -n-5); do
+    btrfs property set "${snapshot_dir}/daily/${file}" ro false
+    btrfs subvolume delete "${snapshot_dir}/daily/${file}"
+done
+
+for file in $(ls "${snapshot_dir}/weekly" | head -n-5); do
+    btrfs property set "${snapshot_dir}/weekly/${file}" ro false
+    btrfs subvolume delete "${snapshot_dir}/weekly/${file}"
+done

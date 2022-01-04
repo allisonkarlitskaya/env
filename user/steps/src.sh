@@ -1,3 +1,9 @@
+test -d ~/src || btrfs subvolume create ~/src
+test "$(stat -c%D ~/src)" != "$(stat -c%D ~)"
+
+systemctl --user daemon-reload  # we don't have a hook for this yet
+systemctl --user enable --now src-backup.service
+
 worktree_repos='
   github:cockpit-project/bots
   github:cockpit-project/cockpit

@@ -1,0 +1,10 @@
+[Unit]
+Description=snapshot src/
+
+[Service]
+ExecStart=%h/.local/libexec/src-backup
+Restart=always
+RestartSec=1h
+
+[Install]
+WantedBy=default.target
