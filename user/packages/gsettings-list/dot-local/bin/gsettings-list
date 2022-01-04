@@ -1,0 +1,121 @@
+#!/usr/bin/python3
+
+from gi.repository import GLib
+from gi.repository import Gio
+import argparse
+import sys
+import os
+
+def get_settings(schema_id, path, backend=None):
+    # make sure the schema exists
+    schemas = Gio.settings_schema_source_get_default()
+    schema = schemas.lookup(schema_id, True)
+    if not schema:
+        sys.exit(f"{schema_id} doesn't exist")
+
+    # make sure we have the path specified from exactly one source
+    # we could support it being specified from both places, if they match (as GSettings does), but why?
+    path_from_schema = schema.get_path()
+    if path is None and path_from_schema is None:
+        sys.exit(f"{schema_id} isn't a singleton, and no path was given on the command line")
+    if path is not None and path_from_schema is not None:
+        sys.exit(f"{schema_id} is a singleton: it may not be instantiated")
+
+    return Gio.Settings(settings_schema=schema, path=path, backend=backend)
+
+def get_item_path(item):
+    return ':' + item + '/'
+
+def get_child_settings(parent, schema_id, item):
+    return get_settings(schema_id, parent.get_property('path') + get_item_path(item), parent.get_property('backend'))
+
+def main():
+    parser = argparse.ArgumentParser(description='Manage GSettingsLists')
+    parser.add_argument('cmd', metavar='CMD', help="The command: 'add' or 'remove'")
+    parser.add_argument('schema', metavar='SCHEMA[:/PATH]', help='Schema (and optional path) of the list to modify')
+    parser.add_argument('file', metavar='FILE', help='The path to the keyfile to add or remove')
+    args = parser.parse_args()
+
+    if args.cmd not in ['add', 'remove']:
+        parser.error("The command must be 'add' or 'remove")
+
+    schema_id = args.schema
+    if ':' in schema_id:
+        schema_id, _, path = args.schema.partition(':')
+    else:
+        path = None
+
+    if not schema_id:
+        parser.error('The schema name cannot be empty')
+
+    if path is not None:
+        if not path.startswith('/'):
+            parser.error("The path must start with '/'")
+        if not path.endswith('/'):
+            parser.error("The path must end with '/'")
+        if path.contains('//'):
+            parser.error("The path cannot contain '//'")
+
+    if not args.file:
+        parser.error('The filename cannot be empty')
+    if args.file.endswith('/'):
+        parser.error("The filename cannot end with '/'")
+
+    settings = get_settings(schema_id, path)
+    settings_schema = settings.get_property('settings-schema')
+    if not settings_schema.has_key('list') or settings_schema.get_key('list').get_value_type().dup_string() != 'as':
+        sys.exit(f"{schema_id} exists, but isn't a GSettingsList")
+
+    item = os.path.basename(args.file)
+
+    if args.cmd == 'remove':
+        remove(settings, item)
+    elif args.cmd == 'add':
+        add(settings, item, args.file)
+    else:
+        raise AssertionError
+
+# NB: there's no way we can avoid races on the 'list' array via the GSettings
+# API.  This affects both the remove() and the add() function.
+def remove(list_settings, item):
+    # remove the profile from the list before resetting it
+    children = list_settings.get_strv('list')
+    if item in children:
+        list_settings.set_strv('list', [child for child in children if child != item])
+    list_settings.reset(get_item_path(item))
+
+def add(list_settings, item, filename):
+    try:
+        keyfile = GLib.KeyFile()
+        keyfile.load_from_file(filename, GLib.KeyFileFlags.NONE)
+    except GLib.Error as e:
+        sys.exit(f'{filename}: {e.message}')
+
+    # apply all changes together (which allows backing out in case of errors)
+    list_settings.delay()
+
+    for group in keyfile.get_groups()[0]:
+        group_settings = get_child_settings(list_settings, group, item)
+        group_schema = group_settings.get_property('settings-schema')
+
+        for key_name in keyfile.get_keys(group)[0]:
+            if not group_schema.has_key(key_name):
+                sys.exit(f'GSettings schema f{group_name} has no key f{key_name}')
+
+            key = group_schema.get_key(key_name)
+            value_str = keyfile.get_value(group, key_name)
+            try:
+                value = GLib.Variant.parse(key.get_value_type(), value_str)
+            except GLib.Error as e:
+                sys.exit(f'key `{key_name}` with value `{value_str}`: {e.message}')
+
+            group_settings.set_value(key_name, value)
+
+    children = list_settings.get_strv('list')
+    if item not in children:
+        list_settings.set_strv('list', children + [item])
+
+    list_settings.apply()
+
+if __name__ == '__main__':
+    main()
