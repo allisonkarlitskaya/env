@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# workaround https://github.com/bus1/dbus-broker/issues/211
+exec busctl call org.freedesktop.DBus / org.freedesktop.DBus ReloadConfig
