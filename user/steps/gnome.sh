@@ -13,6 +13,7 @@ sources=[('xkb', 'us+euro')]
 xkb-options=['lv3:ralt_switch', 'compose:caps', 'esperanto:qwerty']
 
 [org/gnome/desktop/wm/keybindings]
+close=['<Super>w']
 switch-applications=@as []
 switch-applications-backward=@as []
 switch-windows=['<Alt>Tab']
