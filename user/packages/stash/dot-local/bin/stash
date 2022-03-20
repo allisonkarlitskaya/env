@@ -8,8 +8,10 @@ import os
 import subprocess
 import sys
 
+
 class Installer:
     pass
+
 
 # The RealInstaller actually makes changes, optionally logging them verbosely
 class RealInstaller(Installer):
@@ -45,6 +47,7 @@ class RealInstaller(Installer):
                 print(f'rmdir {install_path}', file=sys.stderr)
         except OSError:
             pass
+
 
 # The DryrunInstaller doesn't make any changes
 class DryRunInstaller(Installer):
@@ -149,7 +152,7 @@ class Stow:
 
             if package_entry.is_symlink():
                 sys.exit('Stowing symlinks is unsupported')
-            elif package_entry.is_dir():
+            elif package_entry.is_dir() and not os.path.exists(os.path.join(package_entry.path, '.as-dir')):
                 self.traverse(package, package_file, install_file, hook and hook + [install_name])
             elif self.create_links:
                 if not did_mkdir:
@@ -243,6 +246,8 @@ class Stow:
                 return f'Package {package} does not exist in package directory'
 
             self.traverse(package, package.path, self.install_dir)
+
+        return 0
 
 
 if __name__ == '__main__':
