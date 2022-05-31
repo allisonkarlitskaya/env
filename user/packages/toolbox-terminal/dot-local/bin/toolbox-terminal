@@ -4,6 +4,7 @@ import argparse
 import os
 import subprocess
 import sys
+import textwrap
 import uuid
 
 from gi.repository import GLib
@@ -71,7 +72,7 @@ def create(shortname, directory, exists):
         }
 
     for filename, contents in files.items():
-        set_contents(f'{directory}/{filename}', contents)
+        set_contents(f'{directory}/{filename}', textwrap.dedent(contents))
 
 def install(shortname, directory, exists):
     if not exists:
