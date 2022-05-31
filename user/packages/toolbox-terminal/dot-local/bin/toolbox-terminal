@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 
-from gi.repository import GLib
 import argparse
 import os
 import subprocess
 import sys
 import uuid
+
+from gi.repository import GLib
 
 def set_contents(filename, contents):
     os.makedirs(os.path.dirname(filename), exist_ok=True)
