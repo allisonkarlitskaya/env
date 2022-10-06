@@ -1,5 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=GNOME Software
-Exec=/usr/bin/true
-X-GNOME-Autostart-enabled=false
