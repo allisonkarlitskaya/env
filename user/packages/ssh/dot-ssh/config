@@ -1,8 +1,9 @@
 Include cockpit-client-test.config
+Include e2e-ssh.config
 
 Match final host 127.0.0.2
 	User root
-	IdentityFile ~/.config/ssh/cockpit-identity
+	IdentityFile ~/.config/cockpit-dev/bots/machine/identity
 	StrictHostKeyChecking no
 	UserKnownHostsFile /dev/null
 	CheckHostIP no
@@ -13,4 +14,4 @@ Host c
 
 Host d
 	Hostname 127.0.0.2
-	Port 2202
+	Port 2301
